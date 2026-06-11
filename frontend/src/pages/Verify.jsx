@@ -13,7 +13,7 @@ export default function Verify() {
       setError("No token found in URL.");
       return;
     }
-    api.post("/auth/verify", { token })
+    api.post("/auth/magic-link/verify", { token })
       .then(() => navigate("/"))
       .catch((err) => setError(err.message));
   }, []);
@@ -31,7 +31,7 @@ export default function Verify() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <p className="text-gray-500">Verifying...</p>
+      <p className="text-gray-500">Signing you in...</p>
     </div>
   );
 }

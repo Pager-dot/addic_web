@@ -2,9 +2,10 @@ fastapi
 uvicorn[standard]
 asyncpg
 PyJWT
-passlib[bcrypt]
+argon2-cffi
 python-dotenv
 pydantic[email]
 httpx
 resend
 python-multipart
+slowapi
