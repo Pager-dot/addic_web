@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+asyncpg
+PyJWT
+passlib[bcrypt]
+python-dotenv
+pydantic[email]
+httpx
+resend
+python-multipart
