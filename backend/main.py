@@ -22,7 +22,7 @@ from auth import (
     send_magic_link, send_verification_email, send_password_reset_email,
 )
 from dependencies import get_current_user, verify_csrf
-from routers import users, clubs, posts
+from routers import users, clubs, posts, connections, journal
 
 load_dotenv()
 
@@ -50,10 +50,12 @@ app.add_middleware(
     allow_headers=["*", "X-CSRF-Token"],
 )
 
-# CSRF protection applied to all club/post mutations
+# CSRF protection applied to all state-changing routers
 app.include_router(users.router, prefix="/api/users")
 app.include_router(clubs.router, prefix="/api/clubs", dependencies=[Depends(verify_csrf)])
 app.include_router(posts.router, prefix="/api/posts", dependencies=[Depends(verify_csrf)])
+app.include_router(connections.router, prefix="/api/connections", dependencies=[Depends(verify_csrf)])
+app.include_router(journal.router, prefix="/api/journal", dependencies=[Depends(verify_csrf)])
 
 
 # --- Cookie helpers ---

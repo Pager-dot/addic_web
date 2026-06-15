@@ -8,6 +8,8 @@ import ResetPassword from "./pages/ResetPassword";
 import Home from "./pages/Home";
 import ClubPage from "./pages/ClubPage";
 import PostPage from "./pages/PostPage";
+import Journal from "./pages/Journal";
+import Friends from "./pages/Friends";
 
 export default function App() {
   return (
@@ -22,6 +24,8 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/club/:id" element={<ClubPage />} />
         <Route path="/post/:id" element={<PostPage />} />
+        <Route path="/journal" element={<Journal />} />
+        <Route path="/friends" element={<Friends />} />
       </Routes>
     </BrowserRouter>
   );

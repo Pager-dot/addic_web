@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import Nav from "../components/Nav";
 
 export default function PostPage() {
   const { id } = useParams();
@@ -35,54 +36,65 @@ export default function PostPage() {
   if (!post) return <div className="p-8 text-gray-400">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b px-6 py-3 flex items-center gap-3">
-        <Link to="/" className="text-sm text-blue-600 hover:underline">← Home</Link>
-      </nav>
+    <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
+      <Nav user={user} />
 
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="bg-white border rounded p-6 mb-6">
+      {/* Breadcrumb */}
+      <div className="bg-white border-b px-4 py-2 flex items-center gap-2 text-sm">
+        <Link to="/" className="text-blue-600 hover:underline">Home</Link>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+
+        {/* Post */}
+        <div className="bg-white border rounded-xl p-5 shadow-sm">
           {post.content_warning && (
             <p className="text-xs text-amber-600 mb-2 font-medium">Content Warning: {post.content_warning}</p>
           )}
           <h1 className="text-xl font-bold text-gray-800 mb-1">{post.title}</h1>
-          <p className="text-xs text-gray-400 mb-4">by @{post.author} · {new Date(post.created_at).toLocaleDateString()}</p>
+          <p className="text-xs text-gray-400 mb-4">
+            {post.author} · {new Date(post.created_at).toLocaleDateString()}
+          </p>
           <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{post.body}</p>
         </div>
 
-        <h2 className="font-semibold text-gray-700 mb-3">Comments ({post.comments?.length || 0})</h2>
+        {/* Comments */}
+        <h2 className="font-semibold text-gray-700">Comments ({post.comments?.length || 0})</h2>
 
-        <div className="space-y-3 mb-6">
+        <div className="space-y-2">
           {post.comments?.map((c) => (
-            <div key={c.id} className="bg-white border rounded p-4">
+            <div key={c.id} className="bg-white border rounded-xl p-4 shadow-sm">
               <p className="text-sm text-gray-700">{c.body}</p>
-              <p className="text-xs text-gray-400 mt-1">@{c.author} · {new Date(c.created_at).toLocaleDateString()}</p>
+              <p className="text-xs text-gray-400 mt-1.5">
+                {c.author} · {new Date(c.created_at).toLocaleDateString()}
+              </p>
             </div>
           ))}
-          {post.comments?.length === 0 && <p className="text-gray-400 text-sm">No comments yet.</p>}
+          {post.comments?.length === 0 && (
+            <p className="text-gray-400 text-sm py-2 text-center">No comments yet.</p>
+          )}
         </div>
 
+        {/* Add comment */}
         {user && (
-          <form onSubmit={addComment} className="bg-white border rounded p-4 space-y-3">
+          <form onSubmit={addComment} className="bg-white border rounded-xl p-4 space-y-3 shadow-sm">
             <textarea
               placeholder="Add a comment..."
-              required
-              minLength={1}
-              rows={3}
+              required minLength={1} rows={3}
               value={commentBody}
               onChange={(e) => setCommentBody(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
             />
             {error && <p className="text-red-500 text-xs">{error}</p>}
             <button
-              type="submit"
-              disabled={submitting}
-              className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm disabled:opacity-50"
+              type="submit" disabled={submitting}
+              className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
             >
               {submitting ? "Posting..." : "Post Comment"}
             </button>
           </form>
         )}
+
       </div>
     </div>
   );

@@ -8,14 +8,13 @@ router = APIRouter()
 class CreateClub(BaseModel):
     name: str = Field(min_length=3, max_length=60)
     description: str = Field(max_length=500)
-    is_private: bool = False
 
 @router.get("/")
 async def list_clubs():
     pool = await get_pool()
     async with pool.acquire() as conn:
         clubs = await conn.fetch(
-            "SELECT id, name, description, is_private, created_at FROM clubs WHERE is_deleted = FALSE ORDER BY created_at DESC"
+            "SELECT id, name, description, created_at FROM clubs WHERE is_deleted = FALSE ORDER BY created_at DESC"
         )
     return [dict(c) for c in clubs]
 
@@ -24,8 +23,8 @@ async def create_club(body: CreateClub, user_id: str = Depends(get_current_user)
     pool = await get_pool()
     async with pool.acquire() as conn:
         club = await conn.fetchrow(
-            "INSERT INTO clubs (name, description, is_private, created_by) VALUES ($1, $2, $3, $4) RETURNING id, name",
-            body.name, body.description, body.is_private, user_id
+            "INSERT INTO clubs (name, description, created_by) VALUES ($1, $2, $3) RETURNING id, name",
+            body.name, body.description, user_id
         )
         await conn.execute(
             "INSERT INTO memberships (user_id, club_id, role) VALUES ($1, $2, 'moderator')",
@@ -48,7 +47,7 @@ async def get_club(club_id: str):
     pool = await get_pool()
     async with pool.acquire() as conn:
         club = await conn.fetchrow(
-            "SELECT id, name, description, is_private, created_at FROM clubs WHERE id = $1 AND is_deleted = FALSE",
+            "SELECT id, name, description, created_at FROM clubs WHERE id = $1 AND is_deleted = FALSE",
             club_id
         )
         if not club:

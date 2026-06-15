@@ -15,7 +15,6 @@ CREATE TABLE clubs (
     name TEXT UNIQUE NOT NULL,
     description TEXT,
     created_by UUID REFERENCES users(id),
-    is_private BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     is_deleted BOOLEAN DEFAULT FALSE
 );
@@ -58,9 +57,34 @@ CREATE TABLE refresh_tokens (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE connections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    requester_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    addressee_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT DEFAULT 'pending',  -- 'pending' | 'accepted'
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(requester_id, addressee_id),
+    CHECK (requester_id != addressee_id)
+);
+
+CREATE TABLE journal_entries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    entry_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    body TEXT,
+    is_clean BOOLEAN NOT NULL DEFAULT FALSE,
+    visibility TEXT DEFAULT 'private',  -- 'private' | 'connections'
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, entry_date)
+);
+
 CREATE INDEX idx_posts_club_id ON posts(club_id);
 CREATE INDEX idx_comments_post_id ON comments(post_id);
 CREATE INDEX idx_memberships_user_id ON memberships(user_id);
 CREATE INDEX idx_memberships_club_id ON memberships(club_id);
 CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 CREATE INDEX idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
+CREATE INDEX idx_connections_requester ON connections(requester_id);
+CREATE INDEX idx_connections_addressee ON connections(addressee_id);
+CREATE INDEX idx_journal_user_date ON journal_entries(user_id, entry_date DESC);

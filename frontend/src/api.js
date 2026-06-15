@@ -40,4 +40,5 @@ export const api = {
   },
   get: (path) => api.request("GET", path),
   post: (path, body) => api.request("POST", path, body),
+  put: (path, body) => api.request("PUT", path, body),
 };
