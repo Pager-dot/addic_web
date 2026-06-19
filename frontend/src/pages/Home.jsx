@@ -9,6 +9,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [newClub, setNewClub] = useState({ name: "", description: "" });
   const [showCreate, setShowCreate] = useState(false);
+  const [search, setSearch] = useState("");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
@@ -44,6 +45,9 @@ export default function Home() {
   }
 
   const myClubIds = new Set(myClubs.map((c) => c.id));
+  const filtered = search.trim()
+    ? allClubs.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
+    : allClubs;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
@@ -63,6 +67,14 @@ export default function Home() {
                 + New Club
               </button>
             </div>
+
+            <input
+              type="text"
+              placeholder="Search clubs..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
 
             {showCreate && (
               <form onSubmit={createClub} className="bg-white border rounded-xl p-4 space-y-3 shadow-sm">
@@ -87,7 +99,7 @@ export default function Home() {
             )}
 
             <div className="space-y-2">
-              {allClubs.map((club) => (
+              {filtered.map((club) => (
                 <div key={club.id} className="bg-white border rounded-xl p-4 flex justify-between items-start shadow-sm hover:border-blue-200 transition-colors">
                   <div className="flex-1 min-w-0 pr-3">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -107,8 +119,10 @@ export default function Home() {
                   )}
                 </div>
               ))}
-              {allClubs.length === 0 && (
-                <p className="text-gray-400 text-sm py-4 text-center">No clubs yet. Create one!</p>
+              {filtered.length === 0 && (
+                <p className="text-gray-400 text-sm py-4 text-center">
+                  {search ? "No clubs match your search." : "No clubs yet. Create one!"}
+                </p>
               )}
             </div>
           </div>

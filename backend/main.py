@@ -22,7 +22,8 @@ from auth import (
     send_magic_link, send_verification_email, send_password_reset_email,
 )
 from dependencies import get_current_user, verify_csrf
-from routers import users, clubs, posts, connections, journal
+from routers import users, clubs, connections, journal
+from ws_tickets import create_ticket
 
 load_dotenv()
 
@@ -50,10 +51,9 @@ app.add_middleware(
     allow_headers=["*", "X-CSRF-Token"],
 )
 
-# CSRF protection applied to all state-changing routers
+# CSRF protection applied to all state-changing routers (WS endpoints bypass via ticket auth)
 app.include_router(users.router, prefix="/api/users")
 app.include_router(clubs.router, prefix="/api/clubs", dependencies=[Depends(verify_csrf)])
-app.include_router(posts.router, prefix="/api/posts", dependencies=[Depends(verify_csrf)])
 app.include_router(connections.router, prefix="/api/connections", dependencies=[Depends(verify_csrf)])
 app.include_router(journal.router, prefix="/api/journal", dependencies=[Depends(verify_csrf)])
 
@@ -136,10 +136,10 @@ async def register(request: Request, body: RegisterRequest):
     return {"message": "Account created. Check your email to verify before logging in."}
 
 
-# --- Login (email + password) ---
+# --- Login (email or username + password) ---
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    identifier: str  # email or username
     password: str
 
 @app.post("/api/auth/login")
@@ -148,8 +148,9 @@ async def login(request: Request, body: LoginRequest, response: Response):
     pool = await get_pool()
     async with pool.acquire() as conn:
         user = await conn.fetchrow(
-            "SELECT id, password_hash, email_verified FROM users WHERE email = $1 AND is_deleted = FALSE",
-            body.email,
+            """SELECT id, password_hash, email_verified FROM users
+               WHERE (email = $1 OR username = $1) AND is_deleted = FALSE""",
+            body.identifier,
         )
         # Constant-time: always run verify_password to prevent timing attacks
         dummy_hash = "$argon2id$v=19$m=65536,t=2,p=2$dummydummydummy$dummydummydummydummydummydummydummy"
@@ -284,7 +285,7 @@ async def logout_all(request: Request, response: Response, user_id: str = Depend
 # --- Forgot / reset password ---
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    identifier: str  # email or username
 
 @app.post("/api/auth/forgot-password")
 @limiter.limit("3/minute")
@@ -292,14 +293,15 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest):
     pool = await get_pool()
     async with pool.acquire() as conn:
         user = await conn.fetchrow(
-            "SELECT id FROM users WHERE email = $1 AND is_deleted = FALSE AND password_hash IS NOT NULL",
-            body.email,
+            """SELECT email FROM users
+               WHERE (email = $1 OR username = $1) AND is_deleted = FALSE AND password_hash IS NOT NULL""",
+            body.identifier,
         )
     if user:
-        token = create_password_reset_token(body.email)
-        send_password_reset_email(body.email, token, FRONTEND_URL)
-    # Always 200 — don't leak whether email exists
-    return {"message": "If that email exists, a reset link has been sent."}
+        token = create_password_reset_token(user["email"])
+        send_password_reset_email(user["email"], token, FRONTEND_URL)
+    # Always 200 — don't leak whether account exists
+    return {"message": "If that account exists, a reset link has been sent."}
 
 class ResetPasswordRequest(BaseModel):
     token: str
@@ -326,6 +328,13 @@ async def reset_password(body: ResetPasswordRequest, response: Response):
     return {"message": "Password reset. Please log in with your new password."}
 
 
+# --- WS ticket ---
+
+@app.post("/api/auth/ws-ticket")
+async def get_ws_ticket(user_id: str = Depends(get_current_user)):
+    return {"ticket": create_ticket(user_id)}
+
+
 # --- Me ---
 
 @app.get("/api/auth/me")
@@ -336,6 +345,28 @@ async def me(request: Request, user_id: str = Depends(get_current_user)):
             "SELECT id, username, email, created_at, email_verified FROM users WHERE id = $1", user_id,
         )
     return dict(user)
+
+
+# --- Delete account ---
+
+@app.delete("/api/auth/account", status_code=204)
+async def delete_account(response: Response, user_id: str = Depends(get_current_user)):
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            # Hard-delete all clubs where user is moderator (cascades to messages + memberships)
+            mod_club_ids = await conn.fetch(
+                "SELECT club_id FROM memberships WHERE user_id = $1 AND role = 'moderator'",
+                user_id,
+            )
+            for row in mod_club_ids:
+                await conn.execute("DELETE FROM clubs WHERE id = $1", str(row["club_id"]))
+
+            # Delete user — CASCADE handles: memberships, messages, connections,
+            # journal_entries, refresh_tokens
+            await conn.execute("DELETE FROM users WHERE id = $1", user_id)
+
+    _clear_auth_cookies(response)
 
 
 # --- Health ---

@@ -36,9 +36,21 @@ export const api = {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || "Request failed");
     }
+    if (res.status === 204) return null;
     return res.json();
   },
   get: (path) => api.request("GET", path),
   post: (path, body) => api.request("POST", path, body),
   put: (path, body) => api.request("PUT", path, body),
+  delete: (path) => api.request("DELETE", path),
 };
+
+const WS_BASE = "ws://localhost:8000/api";
+
+export function openClubWs(clubId, ticket, onMessage, onClose) {
+  const ws = new WebSocket(`${WS_BASE}/clubs/${clubId}/ws?ticket=${ticket}`);
+  ws.onmessage = (e) => onMessage(JSON.parse(e.data));
+  ws.onclose = onClose;
+  ws.onerror = () => ws.close();
+  return ws;
+}

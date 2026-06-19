@@ -21,29 +21,18 @@ CREATE TABLE clubs (
 
 CREATE TABLE memberships (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id),
-    club_id UUID REFERENCES clubs(id),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    club_id UUID REFERENCES clubs(id) ON DELETE CASCADE,
     role TEXT DEFAULT 'member',
     joined_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(user_id, club_id)
 );
 
-CREATE TABLE posts (
+CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    club_id UUID REFERENCES clubs(id),
-    author_id UUID REFERENCES users(id),
-    title TEXT NOT NULL,
-    body TEXT NOT NULL,
-    content_warning TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    is_deleted BOOLEAN DEFAULT FALSE
-);
-
-CREATE TABLE comments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    post_id UUID REFERENCES posts(id),
-    author_id UUID REFERENCES users(id),
-    body TEXT NOT NULL,
+    club_id UUID REFERENCES clubs(id) ON DELETE CASCADE,
+    author_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL CHECK (char_length(body) <= 1000),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     is_deleted BOOLEAN DEFAULT FALSE
 );
@@ -61,7 +50,7 @@ CREATE TABLE connections (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     requester_id UUID REFERENCES users(id) ON DELETE CASCADE,
     addressee_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    status TEXT DEFAULT 'pending',  -- 'pending' | 'accepted'
+    status TEXT DEFAULT 'pending',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(requester_id, addressee_id),
     CHECK (requester_id != addressee_id)
@@ -73,14 +62,13 @@ CREATE TABLE journal_entries (
     entry_date DATE NOT NULL DEFAULT CURRENT_DATE,
     body TEXT,
     is_clean BOOLEAN NOT NULL DEFAULT FALSE,
-    visibility TEXT DEFAULT 'private',  -- 'private' | 'connections'
+    visibility TEXT DEFAULT 'private',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(user_id, entry_date)
 );
 
-CREATE INDEX idx_posts_club_id ON posts(club_id);
-CREATE INDEX idx_comments_post_id ON comments(post_id);
+CREATE INDEX idx_messages_club_created ON messages(club_id, created_at DESC);
 CREATE INDEX idx_memberships_user_id ON memberships(user_id);
 CREATE INDEX idx_memberships_club_id ON memberships(club_id);
 CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);

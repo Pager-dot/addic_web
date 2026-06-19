@@ -17,7 +17,7 @@ export default function Login() {
     setLoading(true);
     setError(null);
     try {
-      await api.post("/auth/login", { email, password });
+      await api.post("/auth/login", { identifier: email, password });
       navigate("/");
     } catch (err) {
       setError(err.message);
@@ -67,12 +67,12 @@ export default function Login() {
         ) : mode === "password" ? (
           <form onSubmit={handlePasswordLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Username or Email</label>
               <input
-                type="email" required value={email}
+                type="text" required value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="you@example.com"
+                placeholder="your_username or you@example.com"
               />
             </div>
             <div>

@@ -1,5 +1,6 @@
 import secrets
 from fastapi import Request, HTTPException
+from starlette.requests import HTTPConnection
 from auth import verify_access_token
 
 
@@ -13,9 +14,12 @@ async def get_current_user(request: Request) -> str:
     return user_id
 
 
-async def verify_csrf(request: Request):
-    """Double-submit cookie CSRF check. Skips safe methods."""
-    if request.method in ("GET", "HEAD", "OPTIONS"):
+async def verify_csrf(request: HTTPConnection):
+    """Double-submit cookie CSRF check. Skips WebSocket, safe HTTP methods."""
+    if request.scope["type"] == "websocket":
+        return  # WebSocket auth is handled via one-time ticket
+    method = request.scope.get("method", "")
+    if method in ("GET", "HEAD", "OPTIONS"):
         return
     csrf_cookie = request.cookies.get("csrf_token")
     csrf_header = request.headers.get("X-CSRF-Token")
