@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date
+import calendar as cal_module
 from database import get_pool
 from dependencies import get_current_user
 
@@ -51,6 +52,26 @@ async def create_or_update_entry(body: JournalEntry, user_id: str = Depends(get_
             user_id, today, body.body, body.is_clean, body.visibility,
         )
     return {**dict(row), "entry_date": row["entry_date"].isoformat(), "id": str(row["id"])}
+
+
+@router.get("/calendar")
+async def calendar_month(
+    year: int = Query(...),
+    month: int = Query(...),
+    user_id: str = Depends(get_current_user),
+):
+    if not (1 <= month <= 12) or year < 2000 or year > 2100:
+        raise HTTPException(status_code=400, detail="Invalid year/month")
+    first_day = date(year, month, 1)
+    last_day = date(year, month, cal_module.monthrange(year, month)[1])
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT entry_date, is_clean FROM journal_entries
+               WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3""",
+            user_id, first_day, last_day,
+        )
+    return [{"entry_date": r["entry_date"].isoformat(), "is_clean": r["is_clean"]} for r in rows]
 
 
 @router.put("/{entry_date}")
